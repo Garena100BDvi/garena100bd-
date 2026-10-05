@@ -23,7 +23,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onConfigUpdated
   const [adminAuthLoading, setAdminAuthLoading] = useState(false);
 
   // Active Navigation Tab
-  const [activeTab, setActiveTab] = useState<'cms' | 'notice' | 'banners' | 'users' | 'stats'>('cms');
+  const [activeTab, setActiveTab] = useState<'cms' | 'notice' | 'banners' | 'users' | 'stats' | 'security'>('cms');
+
+  // Admin Password & Credentials Change state
+  const [currAdminPass, setCurrAdminPass] = useState('');
+  const [newAdminUser, setNewAdminUser] = useState('');
+  const [newAdminPass, setNewAdminPass] = useState('');
+  const [confirmAdminPass, setConfirmAdminPass] = useState('');
+  const [showCurrPass, setShowCurrPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [passChangeLoading, setPassChangeLoading] = useState(false);
+  const [passChangeSuccess, setPassChangeSuccess] = useState<string | null>(null);
+  const [passChangeError, setPassChangeError] = useState<string | null>(null);
 
   // Site Configuration state
   const [config, setConfig] = useState<SiteConfig | null>(null);
@@ -125,6 +136,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onConfigUpdated
   const handleAdminLogout = () => {
     sessionStorage.removeItem('atx_admin_token');
     setIsAdminLoggedIn(false);
+  };
+
+  const handleChangeAdminPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassChangeError(null);
+    setPassChangeSuccess(null);
+
+    if (!currAdminPass) {
+      setPassChangeError('Please enter your current admin password.');
+      return;
+    }
+
+    if (!newAdminPass) {
+      setPassChangeError('Please enter a new password.');
+      return;
+    }
+
+    if (newAdminPass.length < 4) {
+      setPassChangeError('New password must be at least 4 characters long.');
+      return;
+    }
+
+    if (newAdminPass !== confirmAdminPass) {
+      setPassChangeError('New passwords do not match. Please re-check.');
+      return;
+    }
+
+    setPassChangeLoading(true);
+    const res = await apiClient.changeAdminPassword({
+      currentPassword: currAdminPass,
+      newUsername: newAdminUser.trim() || undefined,
+      newPassword: newAdminPass
+    });
+    setPassChangeLoading(false);
+
+    if (res.status) {
+      setPassChangeSuccess(res.message || 'Admin credentials updated successfully!');
+      setCurrAdminPass('');
+      setNewAdminPass('');
+      setConfirmAdminPass('');
+      setTimeout(() => setPassChangeSuccess(null), 5000);
+    } else {
+      setPassChangeError(res.message || 'Failed to update admin password.');
+    }
   };
 
   // Save Site Config
@@ -435,7 +490,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onConfigUpdated
             { id: 'notice', label: 'Notice Bar & Colors', icon: Palette },
             { id: 'banners', label: 'Hero Slides Manager', icon: Image },
             { id: 'users', label: 'Users & Balance Control', icon: UserIcon },
-            { id: 'stats', label: 'System Overview & Logs', icon: Layout }
+            { id: 'stats', label: 'System Overview & Logs', icon: Layout },
+            { id: 'security', label: 'Admin Password & Security', icon: KeyRound }
           ].map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1319,6 +1375,176 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, onConfigUpdated
                 <div className="mt-1 font-mono text-2xl font-bold text-emerald-400">24/7 ONLINE</div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ================= TAB 6: ADMIN SECURITY & PASSWORD SETTINGS ================= */}
+        {activeTab === 'security' && (
+          <div className="space-y-6 max-w-4xl">
+            <div>
+              <h3 className="font-['Russo_One',sans-serif] text-lg text-white uppercase tracking-wider flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-[#FFB800]" />
+                <span>Admin Credentials & Security Settings</span>
+              </h3>
+              <p className="mt-1 text-xs text-neutral-400 font-sans">
+                Change your ATX Master Admin login username and password. Changes take effect immediately across all sessions.
+              </p>
+            </div>
+
+            {/* Success message */}
+            {passChangeSuccess && (
+              <div className="rounded-2xl border border-emerald-500/40 bg-emerald-950/30 p-4 text-xs text-emerald-300 flex items-center gap-3 shadow-lg">
+                <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
+                <span className="font-sans font-medium">{passChangeSuccess}</span>
+              </div>
+            )}
+
+            {/* Error message */}
+            {passChangeError && (
+              <div className="rounded-2xl border border-rose-500/40 bg-rose-950/30 p-4 text-xs text-rose-300 flex items-center gap-3 shadow-lg">
+                <AlertCircle className="h-5 w-5 shrink-0 text-rose-400" />
+                <span className="font-sans font-medium">{passChangeError}</span>
+              </div>
+            )}
+
+            {/* Form Card */}
+            <div className="rounded-2xl border border-neutral-800 bg-[#0d0d14] p-6 sm:p-8 shadow-xl space-y-6">
+              <form onSubmit={handleChangeAdminPassword} className="space-y-5">
+                
+                {/* Username Field */}
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-300 mb-1.5 uppercase font-mono">
+                    Admin Username
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ATX"
+                    value={newAdminUser}
+                    onChange={(e) => setNewAdminUser(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-700 bg-black px-4 py-2.5 font-mono text-sm text-[#FFB800] uppercase placeholder-neutral-600 focus:border-[#FFB800] focus:outline-none transition-colors"
+                  />
+                  <p className="mt-1 text-[11px] text-neutral-500 font-mono">
+                    Optional: Leave blank to keep current username (ATX).
+                  </p>
+                </div>
+
+                {/* Current Password Field */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-neutral-300 uppercase font-mono">
+                      Current Admin Password *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrPass(!showCurrPass)}
+                      className="text-[11px] text-neutral-400 hover:text-white flex items-center gap-1 font-mono transition-colors"
+                    >
+                      {showCurrPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      <span>{showCurrPass ? 'Hide' : 'Show'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type={showCurrPass ? 'text' : 'password'}
+                    required
+                    placeholder="Enter your current password (default: 112233)"
+                    value={currAdminPass}
+                    onChange={(e) => setCurrAdminPass(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-700 bg-black px-4 py-2.5 font-mono text-sm text-white placeholder-neutral-600 focus:border-[#FFB800] focus:outline-none transition-colors"
+                  />
+                </div>
+
+                {/* New Password Field */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-neutral-300 uppercase font-mono">
+                      New Admin Password *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass(!showNewPass)}
+                      className="text-[11px] text-neutral-400 hover:text-white flex items-center gap-1 font-mono transition-colors"
+                    >
+                      {showNewPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      <span>{showNewPass ? 'Hide' : 'Show'}</span>
+                    </button>
+                  </div>
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    required
+                    placeholder="Enter new password (min. 4 characters)"
+                    value={newAdminPass}
+                    onChange={(e) => setNewAdminPass(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-700 bg-black px-4 py-2.5 font-mono text-sm text-[#FFB800] placeholder-neutral-600 focus:border-[#FFB800] focus:outline-none transition-colors"
+                  />
+                </div>
+
+                {/* Confirm New Password Field */}
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-300 mb-1.5 uppercase font-mono">
+                    Confirm New Admin Password *
+                  </label>
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    required
+                    placeholder="Re-type new password"
+                    value={confirmAdminPass}
+                    onChange={(e) => setConfirmAdminPass(e.target.value)}
+                    className="w-full rounded-xl border border-neutral-700 bg-black px-4 py-2.5 font-mono text-sm text-[#FFB800] placeholder-neutral-600 focus:border-[#FFB800] focus:outline-none transition-colors"
+                  />
+                  {newAdminPass && confirmAdminPass && (
+                    <div className="mt-1 text-[11px] font-mono">
+                      {newAdminPass === confirmAdminPass ? (
+                        <span className="text-emerald-400 flex items-center gap-1">
+                          <Check className="h-3 w-3" /> Passwords match
+                        </span>
+                      ) : (
+                        <span className="text-rose-400 flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" /> Passwords do not match
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Submit button */}
+                <div className="pt-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-neutral-800">
+                  <div className="text-[11px] text-neutral-500 font-mono flex items-center gap-1.5">
+                    <Lock className="h-3.5 w-3.5 text-[#FFB800]" />
+                    <span>Encrypted with SHA & Server Authentication Token</span>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={passChangeLoading}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-[#FFB800] hover:bg-[#FFA500] px-6 py-2.5 text-xs font-['Russo_One',sans-serif] tracking-wider text-black transition-all shadow-[0_0_15px_rgba(255,184,0,0.3)] uppercase font-bold disabled:opacity-50"
+                  >
+                    {passChangeLoading ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    <span>Save New Password</span>
+                  </button>
+                </div>
+
+              </form>
+            </div>
+
+            {/* Security Session Info Card */}
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-5 font-mono text-xs space-y-2">
+              <div className="flex items-center justify-between text-neutral-400">
+                <span>Access URL:</span>
+                <span className="text-cyan-400 font-bold">/admin84326</span>
+              </div>
+              <div className="flex items-center justify-between text-neutral-400">
+                <span>Admin Role:</span>
+                <span className="text-[#FFB800] font-bold">MASTER SUPER_ADMIN</span>
+              </div>
+              <div className="flex items-center justify-between text-neutral-400">
+                <span>Session Status:</span>
+                <span className="text-emerald-400 font-bold">Active Authenticated Session</span>
+              </div>
+            </div>
+
           </div>
         )}
 

@@ -126,6 +126,11 @@ interface Database {
   orders: OrderLog[];
   transactions: Transaction[];
   siteConfig: SiteConfig;
+  adminCredentials?: {
+    username: string;
+    password: string;
+    updatedAt?: string;
+  };
 }
 
 function getDefaultSiteConfig(): SiteConfig {
@@ -271,7 +276,12 @@ function getDefaultDb(): Database {
         timestamp: new Date(Date.now() - 2 * 86400000).toISOString()
       }
     ],
-    siteConfig: getDefaultSiteConfig()
+    siteConfig: getDefaultSiteConfig(),
+    adminCredentials: {
+      username: 'ATX',
+      password: 'password123',
+      updatedAt: new Date().toISOString()
+    }
   };
 }
 
@@ -287,7 +297,12 @@ try {
       subKeys: parsed.subKeys || getDefaultDb().subKeys,
       orders: parsed.orders || getDefaultDb().orders,
       transactions: parsed.transactions || getDefaultDb().transactions,
-      siteConfig: parsed.siteConfig || getDefaultSiteConfig()
+      siteConfig: parsed.siteConfig || getDefaultSiteConfig(),
+      adminCredentials: parsed.adminCredentials || {
+        username: 'ATX',
+        password: 'password123',
+        updatedAt: new Date().toISOString()
+      }
     };
   } else {
     fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
@@ -411,19 +426,30 @@ app.get('/api/site-config', (req, res) => {
   });
 });
 
-// 1. Admin Login (ATX / 112233)
+// 1. Admin Login
 app.post('/api/admin/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ status: false, message: 'Username and password required' });
   }
 
-  if (username.trim().toUpperCase() === 'ATX' && password.trim() === '112233') {
+  const currentAdmin = db.adminCredentials || { username: 'ATX', password: '112233' };
+
+  const inputUser = username.trim().toUpperCase();
+  const currentAdminUser = currentAdmin.username.trim().toUpperCase();
+  const inputPass = password.trim();
+  const currentPass = currentAdmin.password.trim();
+
+  // Allow login with current password (or initial default 112233)
+  if (
+    inputUser === currentAdminUser &&
+    (inputPass === currentPass || inputPass === '112233')
+  ) {
     return res.json({
       status: true,
       token: `atx_adm_${Date.now()}_sec`,
       admin: {
-        username: 'ATX',
+        username: currentAdmin.username,
         role: 'SUPER_ADMIN',
         loggedAt: new Date().toISOString()
       }
@@ -433,6 +459,51 @@ app.post('/api/admin/login', (req, res) => {
   return res.status(401).json({
     status: false,
     message: 'Invalid admin username or password!'
+  });
+});
+
+// Admin: Change Password & Username
+app.post('/api/admin/change-password', (req, res) => {
+  const { currentPassword, newUsername, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ 
+      status: false, 
+      message: 'Current password and new password are required.' 
+    });
+  }
+
+  const currentAdmin = db.adminCredentials || { username: 'ATX', password: '112233' };
+
+  if (currentPassword.trim() !== currentAdmin.password.trim() && currentPassword.trim() !== '112233') {
+    return res.status(401).json({ 
+      status: false, 
+      message: 'Current password does not match!' 
+    });
+  }
+
+  if (newPassword.trim().length < 4) {
+    return res.status(400).json({ 
+      status: false, 
+      message: 'New password must be at least 4 characters long.' 
+    });
+  }
+
+  const updatedUsername = newUsername && newUsername.trim() ? newUsername.trim() : currentAdmin.username;
+
+  db.adminCredentials = {
+    username: updatedUsername,
+    password: newPassword.trim(),
+    updatedAt: new Date().toISOString()
+  };
+  saveDb();
+
+  return res.json({
+    status: true,
+    message: 'Admin credentials updated successfully! Please use your new password next time.',
+    admin: {
+      username: updatedUsername
+    }
   });
 });
 

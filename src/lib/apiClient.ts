@@ -153,6 +153,24 @@ export const apiClient = {
     }
   },
 
+  // Admin: Change Admin Panel Password
+  async changeAdminPassword(data: {
+    currentPassword: string;
+    newUsername?: string;
+    newPassword: string;
+  }): Promise<{ status: boolean; message: string; admin?: any }> {
+    try {
+      const res = await fetch('/api/admin/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      return await res.json();
+    } catch (err: any) {
+      return { status: false, message: 'Server communication error while changing password' };
+    }
+  },
+
   // Public player check
   async checkPlayerPublic(uid: string): Promise<PlayerCheckResponse> {
     try {

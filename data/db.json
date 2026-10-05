@@ -272,7 +272,7 @@
     "brandTag": "API",
     "backgroundUrl": "/uploads/bg_1791213703356_kawcb.jpg",
     "costPerCheck": 0.05,
-    "noticeText": "",
+    "noticeText": "wellcom",
     "noticeActive": true,
     "bkashNumber": "01888-123456",
     "nagadNumber": "01777-654321",
@@ -334,5 +334,10 @@
     "noticeBgColor": "#18181B",
     "noticeTextColor": "#FFB800",
     "whatsappNumber": "01608880183"
+  },
+  "adminCredentials": {
+    "username": "ATX",
+    "password": "112233",
+    "updatedAt": "2026-10-05T16:22:21.606Z"
   }
 }
