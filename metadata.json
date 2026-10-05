@@ -1,0 +1,6 @@
+{
+  "name": "Garena Official API Gateway - Free Fire Player UID & Account Verification",
+  "description": "Professional Garena Official API provider platform for Free Fire Player UID name check, sub-API generation, developer dashboard, real-time analytics, and automated wallet billing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
